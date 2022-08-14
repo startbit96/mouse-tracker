@@ -58,7 +58,8 @@ def listAllResults():
       overAllData[key]["name"] + "\t" +
       "left: " + "{:.3f}".format(overAllData[key]["leftOverallTime"]) + "s" + "\t" +
       "right: " + "{:.3f}".format(overAllData[key]["rightOverallTime"]) + "s" + "\t" +
-      "total: " + "{:.3f}".format(overAllData[key]["overallTime"]) + "s"
+      "total: " + "{:.3f}".format(overAllData[key]["overallTime"]) + "s" + "\t" +
+      "measurement timespan: " + formatSecondsToMinutes(overAllData[key]["measurementOverallTime"])
     )
   print("-------------------------------------------------------------")
   print(" ")
@@ -69,13 +70,14 @@ def saveResultsToCsv():
   try:
     with open("./data.csv", "w", encoding="UTF8") as f:
       writer = csv.writer(f, delimiter=";")
-      writer.writerow(["name", "left", "right", "total"])
+      writer.writerow(["name", "left", "right", "total", "measurement timespan"])
       for key in overAllData.keys():
         writer.writerow([
           overAllData[key]["name"],
           str(overAllData[key]["leftOverallTime"]).replace('.', ','),
           str(overAllData[key]["rightOverallTime"]).replace('.', ','),
-          str(overAllData[key]["overallTime"]).replace('.', ',')
+          str(overAllData[key]["overallTime"]).replace('.', ','),
+          formatSecondsToMinutes(overAllData[key]["measurementOverallTime"])
         ])
     printWithMode("Results saved to a csv-file.")
   except:
