@@ -13,8 +13,10 @@ mode = "main"
 name = ""
 data = {}
 overAllData = {}
+measurementIsRunning = False
 
 def printWithMode(text, newLine=True):
+  global mode, measurementIsRunning
   if (len(mode) <= 4):
     space = "\t\t"
   else:
@@ -23,7 +25,14 @@ def printWithMode(text, newLine=True):
     newLine = "\n"
   else:
     newLine = ""
-  print(newLine + "[" + mode + "]" + space + text)
+  if (mode == "record"):
+    if (measurementIsRunning == True):
+      status = ", running"
+    else:
+      status = ", paused"
+  else:
+    status = ""
+  print(newLine + "[" + mode + status + "]" + space + text)
 
 def printHelp():
   print(" ")
@@ -42,6 +51,7 @@ def printHelp():
   print("ESC\t\tswitch back to 'main'-mode (create -> main)")
   print(" ")
   print("commands in 'record'-mode:")
+  print("SPACE\t\tstart / pause the measurement")
   print("LEFT\t\tadd time to left object")
   print("RIGHT\t\tadd time to right object")
   print("ESC\t\tsave and switch back to 'main'-mode (record -> main)")
@@ -79,14 +89,26 @@ def saveResultsToCsv():
           str(overAllData[key]["overallTime"]).replace('.', ','),
           formatSecondsToMinutes(overAllData[key]["measurementOverallTime"])
         ])
-    printWithMode("Results saved to a csv-file.")
+    printWithMode("Results saved to a csv-file.", newLine=False)
   except:
-    printWithMode("An error occured while saving results to a csv-file ...")
+    printWithMode("An error occured while saving results to a csv-file ...", newLine=False)
   
 def formatSecondsToMinutes(seconds):
   minutes = math.floor(seconds / 60)
   seconds = round(seconds - minutes * 60)
   return str(minutes) + "min " + str(seconds) + "s"
+
+def calculateMeasurementTimespan():
+  global data
+  measurementTimespan = 0
+  for timeEntries in data["measurementStartTime"]:
+    if (len(timeEntries) == 1):
+      measurementTimespan = measurementTimespan + (time.time() - timeEntries[0])
+    elif (len(timeEntries) == 2):
+      measurementTimespan = measurementTimespan + (timeEntries[1] - timeEntries[0])
+    else:
+      print("ERROR timespan calculation")
+  data["measurementOverallTime"] = measurementTimespan
   
 def checkOverallTime():
   global data
@@ -106,7 +128,7 @@ def checkOverallTime():
   data["leftOverallTime"] = leftOverallTime
   data["rightOverallTime"] = rightOverallTime
   data["overallTime"] = overallTime
-  data["measurementOverallTime"] = time.time() - data["measurementStartTime"]
+  calculateMeasurementTimespan()
   if (overallTime >= 20):
     done = "\t<--- DONE\a"
   else:
@@ -118,7 +140,7 @@ def checkOverallTime():
                 newLine=False)
   
 def on_press(key):
-  global mode, name, data, overAllData
+  global mode, name, data, overAllData, measurementIsRunning
   # main
   if ((mode == "main") and (key == keyboard.KeyCode.from_char("h"))):
     printHelp()
@@ -130,7 +152,7 @@ def on_press(key):
     listAllResults()
   elif ((mode == "main") and (key == keyboard.KeyCode.from_char("s"))):
     saveResultsToCsv()
-  elif (key == keyboard.KeyCode.from_char("q")):
+  elif ((mode == "main") and (key == keyboard.KeyCode.from_char("q"))):
     printWithMode("Terminating the application ...")
     return False
   # create
@@ -151,33 +173,54 @@ def on_press(key):
         "leftOverallTime": 0,
         "rightOverallTime": 0,
         "overallTime": 0,
-        "measurementStartTime": time.time(),
+        "measurementStartTime": [],
         "measurementOverallTime": 0
       }
       mode = "record"
-      printWithMode("Start recording ...", newLine=False)
+      measurementIsRunning = False
+      printWithMode("Switching to record-mode ...", newLine=False)
   elif (mode == "create"):
     try:
       name = name + key.char
     except AttributeError:
       pass
   # record
+  elif ((mode == "record") and (key == keyboard.Key.space)):
+    if ((data["leftIsPressed"] == True) or (data["rightIsPressed"] == True)):
+      printWithMode("ERROR: Can't pause / start while LEFT or RIGHT is pressed.")
+    else:
+      measurementIsRunning = not(measurementIsRunning)
+      if (measurementIsRunning == True):
+        printWithMode("Measurement started.", newLine=False)
+        data["measurementStartTime"].append([time.time()])
+      else:
+        printWithMode("Measurement paused.", newLine=False)
+        data["measurementStartTime"][-1].append(time.time())
   elif ((mode == "record") and (key == keyboard.Key.left)):
-    if (data["leftIsPressed"] == False):
-      data["leftIsPressed"] = True
-      data["left"].append([time.time()])
+    if (measurementIsRunning == False):
+      printWithMode("MEASUREMENT IS PAUSED!", newLine=False)
+    else:
+      if (data["leftIsPressed"] == False):
+        data["leftIsPressed"] = True
+        data["left"].append([time.time()])
   elif ((mode == "record") and (key == keyboard.Key.right)):
-    if (data["rightIsPressed"] == False):
-      data["rightIsPressed"] = True
-      data["right"].append([time.time()])
+    if (measurementIsRunning == False):
+      printWithMode("MEASUREMENT IS PAUSED!", newLine=False)
+    else:
+      if (data["rightIsPressed"] == False):
+        data["rightIsPressed"] = True
+        data["right"].append([time.time()])
   elif ((mode == "record") and (key == keyboard.Key.esc)):
-    printWithMode("Saving results ...")
-    
-    overAllData[data["name"] + "_" + str(round(time.time()))] = data
-    with open("./data.json", "w") as f:
-      json.dump(overAllData, f, indent=4)
-    mode = "main"
-    printWithMode("Switching back to main-menu ...", newLine=False)
+    if ((data["leftIsPressed"] == True) or (data["rightIsPressed"] == True)):
+      printWithMode("ERROR: Can't stop measurement while LEFT or RIGHT is pressed.")
+    else:
+      calculateMeasurementTimespan()
+      printWithMode("Saving results ...")
+      overAllData[data["name"] + "_" + str(round(time.time()))] = data
+      with open("./data.json", "w") as f:
+        json.dump(overAllData, f, indent=4)
+      mode = "main"
+      printWithMode("Switching back to main-menu ...", newLine=False)
 
 def on_release(key):
   global mode, data
