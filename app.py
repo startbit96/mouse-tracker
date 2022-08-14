@@ -6,6 +6,7 @@ import time
 import os.path
 import json
 import csv
+import math
 from pynput import keyboard 
 
 mode = "main"
@@ -80,6 +81,11 @@ def saveResultsToCsv():
   except:
     printWithMode("An error occured while saving results to a csv-file ...")
   
+def formatSecondsToMinutes(seconds):
+  minutes = math.floor(seconds / 60)
+  seconds = round(seconds - minutes * 60)
+  return str(minutes) + "min " + str(seconds) + "s"
+  
 def checkOverallTime():
   global data
   leftOverallTime = 0 
@@ -98,13 +104,15 @@ def checkOverallTime():
   data["leftOverallTime"] = leftOverallTime
   data["rightOverallTime"] = rightOverallTime
   data["overallTime"] = overallTime
+  data["measurementOverallTime"] = time.time() - data["measurementStartTime"]
   if (overallTime >= 20):
     done = "\t<--- DONE\a"
   else:
     done = ""
   printWithMode("left: " + "{:.3f}".format(leftOverallTime) + "s" +
                 "\tright: " + "{:.3f}".format(rightOverallTime) + "s" +
-                "\ttotal: " + "{:.3f}".format(overallTime) + "s" + done,
+                "\ttotal: " + "{:.3f}".format(overallTime) + "s" + done + 
+                "\t(measurement timespan: " + formatSecondsToMinutes(data["measurementOverallTime"]) + ")",
                 newLine=False)
   
 def on_press(key):
@@ -140,7 +148,9 @@ def on_press(key):
         "rightIsPressed": False,
         "leftOverallTime": 0,
         "rightOverallTime": 0,
-        "overallTime": 0
+        "overallTime": 0,
+        "measurementStartTime": time.time(),
+        "measurementOverallTime": 0
       }
       mode = "record"
       printWithMode("Start recording ...", newLine=False)
