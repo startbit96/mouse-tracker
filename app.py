@@ -98,7 +98,7 @@ def checkOverallTime():
   data["leftOverallTime"] = leftOverallTime
   data["rightOverallTime"] = rightOverallTime
   data["overallTime"] = overallTime
-  if (overallTime >= 2):
+  if (overallTime >= 20):
     done = "\t<--- DONE\a"
   else:
     done = ""
