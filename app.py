@@ -3,7 +3,7 @@
 # pip install pynput
 
 import time
-import os.path
+import os
 import json
 import csv
 import math
@@ -16,7 +16,7 @@ overAllData = {}
 measurementIsRunning = False
 
 def printWithMode(text, newLine=True):
-  global mode, measurementIsRunning
+  global mode, data, measurementIsRunning
   if (len(mode) <= 4):
     space = "\t\t"
   else:
@@ -33,6 +33,11 @@ def printWithMode(text, newLine=True):
   else:
     status = ""
   print(newLine + "[" + mode + status + "]" + space + text)
+  if (mode == "record"):
+    data["log"].append(
+      "[" + mode + status + "]" + space + text
+    )
+    
 
 def printHelp():
   print(" ")
@@ -174,7 +179,8 @@ def on_press(key):
         "rightOverallTime": 0,
         "overallTime": 0,
         "measurementStartTime": [],
-        "measurementOverallTime": 0
+        "measurementOverallTime": 0,
+        "log": []
       }
       mode = "record"
       measurementIsRunning = False
@@ -216,10 +222,18 @@ def on_press(key):
     else:
       calculateMeasurementTimespan()
       printWithMode("Saving results ...")
-      overAllData[data["name"] + "_" + str(round(time.time()))] = data
+      filename = data["name"] + "_" + str(round(time.time()))
+      overAllData[filename] = data
       with open("./data.json", "w") as f:
         json.dump(overAllData, f, indent=4)
+      if not(os.path.exists("./log")):
+        os.makedirs("./log")
+      with open("./log/" + filename + ".txt", "w") as f:
+        for line in data["log"]:
+            f.write(line)
+            f.write('\n')
       mode = "main"
+      printWithMode("Saved results to './log/" + filename + ".txt'.", newLine=False)
       printWithMode("Switching back to main-menu ...", newLine=False)
 
 def on_release(key):
